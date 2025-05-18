@@ -37,36 +37,10 @@ clientes_segmentados <- clientes %>%
 
 ggplot(clientes_segmentados, aes(x = categoria_valor, fill = categoria_valor)) +
   geom_bar(show.legend = FALSE) +
+  geom_text(stat = "count", aes(label = ..count..), vjust = -0.3, size = 3.5) +
   labs(title = "Clientes por Categoria de Valor Total",
        x = "Categoria de Valor", y = "Quantidade") +
   theme_minimal(base_size = 14)
-
-
-
-
-
-# ggplot(clientes_segmentados, aes(x = categoria_frequencia, fill = categoria_frequencia)) +
-#   geom_bar(show.legend = FALSE) +
-#   labs(title = "Clientes por Frequência de Compra",
-#        x = "Frequência", y = "Quantidade") +
-#   theme_minimal(base_size = 14)
-# 
-# 
-# 
-# 
-# ggplot(clientes_segmentados, aes(x = categoria_desconto, fill = categoria_desconto)) +
-#   geom_bar(show.legend = FALSE) +
-#   labs(title = "Clientes por Sensibilidade a Desconto",
-#        x = "Sensibilidade", y = "Quantidade") +
-#   theme_minimal(base_size = 14)
-
-
-
-
-
-
-
-
 
 
 df$`Purchase Date` <- dmy_hms(df$`Purchase Date`)
@@ -103,34 +77,17 @@ rfm_df <- rfm_df %>%
   )
 
 
-
-ggplot(rfm_df, aes(x = f_score, y = m_score, color = segmento)) +
-  geom_jitter(alpha = 0.7) +
-  theme_minimal() +
-  labs(title = "Segmentação RFM", x = "Frequência", y = "Valor Monetário")
-
-
 ggplot(rfm_df, aes(x = segmento, fill = segmento)) +
   geom_bar(show.legend = FALSE) +
+  geom_text(stat = "count", aes(label = ..count..), vjust = -0.3, size = 3.5) +
   labs(title = "Distribuição de Clientes por Segmento RFM",
        x = "Segmento", y = "Número de Clientes") +
   theme_minimal(base_size = 14)
 
 
-# rfm_df_joined <- df %>%
-#   inner_join(rfm_df, by = "CID")
-# 
-# rfm_valor <- rfm_df_joined %>%
-#   group_by(segmento) %>%
-#   summarise(ticket_medio = mean(`Net Amount`, na.rm = TRUE))
-# 
-# ggplot(rfm_valor, aes(x = segmento, y = ticket_medio, fill = segmento)) +
-#   geom_col(show.legend = FALSE) +
-#   labs(title = "Ticket Médio por Segmento RFM",
-#        x = "Segmento", y = "Valor Médio de Compra (INR)") +
-#   theme_minimal(base_size = 14)
 
 
+# IMPORTANTE - CRIAR TABELA SOBRE
 resumo <- df %>%
   inner_join(rfm_df, by = "CID") %>%
   group_by(segmento) %>%
@@ -188,11 +145,24 @@ ggplot(resumo_ticket, aes(x = `Discount Availed`, y = media_ticket, fill = `Disc
 
 
 ggplot(categoria_desconto, aes(x = `Product Category`, y = total_transacoes, fill = `Discount Availed`)) +
-  geom_bar(stat = "identity", position = "dodge") +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
+  geom_text(
+    aes(label = total_transacoes),
+    position = position_dodge(width = 0.9),
+    hjust = -0.1, size = 3
+  ) +
   coord_flip() +
-  labs(title = "Uso de Desconto por Categoria de Produto")
-
-
+  labs(
+    title = "Uso de Desconto por Categoria de Produto",
+    x = "Categoria de Produto",
+    y = "Total de Transações",
+    fill = "Tipo de Desconto"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA)
+  )
 
 # analise cesta de produtos-------
 
@@ -202,21 +172,21 @@ cliente_categoria <- df %>%
   tidyr::pivot_wider(names_from = `Product Category`, values_from = presenca, values_fill = 0)
 
 
-library(arules)
-
-# Converter para formato transacional
-transacoes <- as(as.matrix(cliente_categoria[,-1]), "transactions")
-
-# Rodar algoritmo Apriori
-regras <- apriori(transacoes, parameter = list(supp = 0.01, conf = 0.1, minlen = 2))
-
-inspect(head(sort(regras, by = "lift"), 10))
-
-library(arulesViz)
-
-plot(regras, method = "graph", engine = "htmlwidget")
-
-
+# library(arules)
+# 
+# # Converter para formato transacional
+# transacoes <- as(as.matrix(cliente_categoria[,-1]), "transactions")
+# 
+# # Rodar algoritmo Apriori
+# regras <- apriori(transacoes, parameter = list(supp = 0.01, conf = 0.1, minlen = 2))
+# 
+# inspect(head(sort(regras, by = "lift"), 10))
+# 
+# library(arulesViz)
+# 
+# plot(regras, method = "graph", engine = "htmlwidget")
+# 
+# 
 
 
 # Clientes e categorias
@@ -230,16 +200,21 @@ pares <- cliente_categoria %>%
   count(`Product Category.x`, `Product Category.y`, sort = TRUE) %>%
   top_n(10, wt = n)
 
-# Gráfico de barras
-ggplot(pares, aes(x = reorder(paste(`Product Category.x`, "&", `Product Category.y`), n), y = n)) +
-  geom_col(fill = "steelblue") +
+ggplot(pares, aes(x = reorder(paste(`Product Category.x`, "&", `Product Category.y`), n), 
+                  y = n, fill = paste(`Product Category.x`, "&", `Product Category.y`))) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n), hjust = -0.1, size = 3) +
   coord_flip() +
   labs(
     title = "Top 10 Pares de Categorias Compradas Juntas",
     x = "Par de Categorias",
     y = "Número de Clientes"
   ) +
-  theme_minimal(base_size = 13)
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA)
+  )
 
 
 # library(reshape2)
@@ -265,32 +240,32 @@ ggplot(pares, aes(x = reorder(paste(`Product Category.x`, "&", `Product Category
 # Analise temporal -------
 
 
-df$`Purchase Date` <- dmy_hms(df$`Purchase Date`)
-df <- df %>% mutate(ano_mes = floor_date(`Purchase Date`, unit = "month"))
-
-resumo_temporal <- df %>%
-  group_by(ano_mes) %>%
-  summarise(
-    total_vendas = sum(`Net Amount`, na.rm = TRUE),
-    numero_transacoes = n(),
-    ticket_medio = mean(`Net Amount`, na.rm = TRUE),
-    clientes_unicos = n_distinct(CID)
-  )
-
-
-ggplot(resumo_temporal, aes(x = ano_mes, y = total_vendas)) +
-  geom_line(color = "steelblue", size = 1) +
-  labs(title = "Faturamento Mensal", x = "Mês", y = "Total Vendido (INR)") +
-  theme_minimal(base_size = 14)
-
-
-ggplot(resumo_temporal, aes(x = ano_mes, y = clientes_unicos)) +
-  geom_line(color = "darkgreen", size = 1) +
-  labs(title = "Clientes Únicos por Mês", x = "Mês", y = "Nº de Clientes") +
-  theme_minimal(base_size = 14)
-
-ggplot(resumo_temporal, aes(x = ano_mes, y = ticket_medio)) +
-  geom_line(color = "darkred", size = 1) +
-  labs(title = "Ticket Médio Mensal", x = "Mês", y = "Valor Médio (INR)") +
-  theme_minimal(base_size = 14)
+# df$`Purchase Date` <- dmy_hms(df$`Purchase Date`)
+# df <- df %>% mutate(ano_mes = floor_date(`Purchase Date`, unit = "month"))
+# 
+# resumo_temporal <- df %>%
+#   group_by(ano_mes) %>%
+#   summarise(
+#     total_vendas = sum(`Net Amount`, na.rm = TRUE),
+#     numero_transacoes = n(),
+#     ticket_medio = mean(`Net Amount`, na.rm = TRUE),
+#     clientes_unicos = n_distinct(CID)
+#   )
+# 
+# 
+# ggplot(resumo_temporal, aes(x = ano_mes, y = total_vendas)) +
+#   geom_line(color = "steelblue", size = 1) +
+#   labs(title = "Faturamento Mensal", x = "Mês", y = "Total Vendido (INR)") +
+#   theme_minimal(base_size = 14)
+# 
+# 
+# ggplot(resumo_temporal, aes(x = ano_mes, y = clientes_unicos)) +
+#   geom_line(color = "darkgreen", size = 1) +
+#   labs(title = "Clientes Únicos por Mês", x = "Mês", y = "Nº de Clientes") +
+#   theme_minimal(base_size = 14)
+# 
+# ggplot(resumo_temporal, aes(x = ano_mes, y = ticket_medio)) +
+#   geom_line(color = "darkred", size = 1) +
+#   labs(title = "Ticket Médio Mensal", x = "Mês", y = "Valor Médio (INR)") +
+#   theme_minimal(base_size = 14)
 
